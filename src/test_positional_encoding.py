@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from src.positional_encoding import positional_encoding
+from positional_encoding import positional_encoding
 import tensorflow as tf
 
 pos_encoding = positional_encoding(length=2048, depth=512)
