@@ -4,7 +4,6 @@ from cross_attention import CrossAttention
 from feed_forward_layer import FeedForward
 from positional_embedding import PositionalEmbedding
 
-
 class DecoderLayer(tf.keras.layers.Layer):
     """
     A single layer of the Decoder. Usually there are multiple layers stacked on top of each other.
