@@ -8,7 +8,7 @@ class ModelConfigs(BaseModelConfigs):
     def __init__(self):
         super().__init__()
         self.model_path = os.path.join(
-            "Models/09_translation_transformer",
+            "models",
             datetime.strftime(datetime.now(), "%Y%m%d%H%M"),
         )
         self.num_layers = 4
