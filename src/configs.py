@@ -17,7 +17,7 @@ class ModelConfigs(BaseModelConfigs):
         self.dff = 512
         self.dropout_rate = 0.1
         self.batch_size = 16
-        self.train_epochs = 50
+        self.train_epochs = 20
         # CustomSchedule parameters
         self.init_lr = 0.00001
         self.lr_after_warmup = 0.0005

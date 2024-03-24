@@ -49,16 +49,16 @@ es_training_data = read_files(es_training_data_path)
 es_validation_data = read_files(es_validation_data_path)
 
 # Consider only sentences with length <= 500
-max_lenght = 500
+max_length = 500
 train_dataset = [
     [es_sentence, en_sentence]
     for es_sentence, en_sentence in zip(es_training_data, en_training_data)
-    if len(es_sentence) <= max_lenght and len(en_sentence) <= max_lenght
+    if len(es_sentence) <= max_length and len(en_sentence) <= max_length
 ]
 val_dataset = [
     [es_sentence, en_sentence]
     for es_sentence, en_sentence in zip(es_validation_data, en_validation_data)
-    if len(es_sentence) <= max_lenght and len(en_sentence) <= max_lenght
+    if len(es_sentence) <= max_length and len(en_sentence) <= max_length
 ]
 es_training_data, en_training_data = zip(*train_dataset)
 es_validation_data, en_validation_data = zip(*val_dataset)

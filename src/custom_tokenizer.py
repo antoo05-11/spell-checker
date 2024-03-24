@@ -300,7 +300,7 @@ class CustomTokenizer:
         return tokenizer
 
     @property
-    def lenght(self):
+    def length(self):
         return len(self.index_word)
 
     def __len__(self):
