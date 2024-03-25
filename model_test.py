@@ -1,5 +1,6 @@
 import tensorflow as tf
+import tensorflow_text
 
 reloaded = tf.saved_model.load('translator')
 
-print(reloaded('este é o primeiro livro que eu fiz.').numpy())
+print((str(reloaded('este').numpy()).split(' ')))

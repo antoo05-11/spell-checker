@@ -1,5 +1,12 @@
+import logging
+import time
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 import tensorflow_datasets as tfds
 import tensorflow as tf
+
 import tensorflow_text
 
 from PositionalEmbedding import PositionalEmbedding
@@ -22,9 +29,7 @@ examples, metadata = tfds.load(
     "ted_hrlr_translate/pt_to_en", with_info=True, as_supervised=True
 )
 
-train_examples, val_examples = examples["train"].take(100), examples[
-    "validation"
-].take(100)
+train_examples, val_examples = examples["train"], examples["validation"]
 
 # Get tokenizer for both languages.
 model_name = "ted_hrlr_translate_pt_en_converter"
@@ -130,7 +135,7 @@ optimizer = tf.keras.optimizers.Adam(
 
 transformer.compile(loss=masked_loss, optimizer=optimizer, metrics=[masked_accuracy])
 
-transformer.fit(train_batches, epochs=50, validation_data=val_batches)
+transformer.fit(train_batches, epochs=20, validation_data=val_batches)
 
 translator = Translator(tokenizers, transformer)
 

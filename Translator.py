@@ -1,52 +1,60 @@
-import numpy as np
-import time
+import tensorflow as tf
 
-class Translator():
-    def __init__(self, transformer, tokenizer, detokenizer):
-        self.model = transformer
-        self.tokenizer = tokenizer
-        self.detokenizer = detokenizer
+MAX_TOKENS = 128
 
-    def predict(self, sentence):
-        start = time.time()
-        tokenized_sentence = self.tokenizer.texts_to_sequences([sentence])[0]
-        encoder_input = np.pad(tokenized_sentence, (0, self.tokenizer.max_length - len(tokenized_sentence)), constant_values=0).astype(np.int64)
 
-        tokenized_results = [self.detokenizer.start_token_index]
-        for index in range(self.detokenizer.max_length - 1):
-            decoder_input = np.pad(tokenized_results, (0, self.detokenizer.max_length - len(tokenized_results)), constant_values=0).astype(np.int64)
-            input_dict = {
-                self.model.name: np.expand_dims(encoder_input, axis=0),
-                self.model.name: np.expand_dims(decoder_input, axis=0),
-            }
-            preds = self.model.predict(None, input_dict)[0] # preds shape (1, 206, 29110)
-            pred_results = np.argmax(preds, axis=2)
-            tokenized_results.append(pred_results[0][index])
+class Translator(tf.Module):
+    def __init__(self, tokenizers, transformer):
+        self.tokenizers = tokenizers
+        self.transformer = transformer
 
-            if tokenized_results[-1] == self.detokenizer.end_token_index:
+    def __call__(self, sentence, max_length=MAX_TOKENS):
+        # The input sentence is Portuguese, hence adding the `[START]` and `[END]` tokens.
+        assert isinstance(sentence, tf.Tensor)
+        if len(sentence.shape) == 0:
+            sentence = sentence[tf.newaxis]
+
+        sentence = self.tokenizers.pt.tokenize(sentence).to_tensor()
+
+        encoder_input = sentence
+
+        # As the output language is English, initialize the output with the
+        # English `[START]` token.
+        start_end = self.tokenizers.en.tokenize([""])[0]
+        start = start_end[0][tf.newaxis]
+        end = start_end[1][tf.newaxis]
+
+        # `tf.TensorArray` is required here (instead of a Python list), so that the
+        # dynamic-loop can be traced by `tf.function`.
+        output_array = tf.TensorArray(dtype=tf.int64, size=0, dynamic_size=True)
+        output_array = output_array.write(0, start)
+
+        for i in tf.range(max_length):
+            output = tf.transpose(output_array.stack())
+            predictions = self.transformer([encoder_input, output], training=False)
+
+            # Select the last token from the `seq_len` dimension.
+            predictions = predictions[:, -1:, :]  # Shape `(batch_size, 1, vocab_size)`.
+
+            predicted_id = tf.argmax(predictions, axis=-1)
+
+            # Concatenate the `predicted_id` to the output which is given to the
+            # decoder as its input.
+            output_array = output_array.write(i + 1, predicted_id[0])
+
+            if predicted_id == end:
                 break
-        
-        results = self.detokenizer.detokenize([tokenized_results])
-        return results[0], time.time() - start
 
-# # Path to dataset
-# en_validation_data_path = "/home/thanhan/Documents/projects/python/spell-checker/data/en-es/opus.en-es-dev.en"
-# es_validation_data_path = "/home/thanhan/Documents/projects/python/spell-checker/data/en-es/opus.en-es-dev.es"
+        output = tf.transpose(output_array.stack())
+        # The output shape is `(1, tokens)`.
+        text = self.tokenizers.en.detokenize(output)[0]  # Shape: `()`.
 
-# en_validation_data = read_files(en_validation_data_path)
-# es_validation_data = read_files(es_validation_data_path)
+        tokens = self.tokenizers.en.lookup(output)[0]
 
-# # Consider only sentences with length <= 500
-# max_length = 500
-# val_examples = [[es_sentence, en_sentence] for es_sentence, en_sentence in zip(es_validation_data, en_validation_data) if len(es_sentence) <= max_length and len(en_sentence) <= max_length]
+        # `tf.function` prevents us from using the attention_weights that were
+        # calculated on the last iteration of the loop.
+        # So, recalculate them outside the loop.
+        self.transformer([encoder_input, output[:, :-1]], training=False)
+        attention_weights = self.transformer.decoder.last_attn_scores
 
-# translator = PtEnTranslator("./Models/09_translation_transformer/202308241514/model.onnx")
-
-# val_dataset = []
-# for es, en in val_examples:
-#     results, duration = translator.predict(es)
-#     print("Spanish:     ", es.lower())
-#     print("English:     ", en.lower())
-#     print("English pred:", results)
-#     print(duration)
-#     print()
+        return text, tokens, attention_weights
